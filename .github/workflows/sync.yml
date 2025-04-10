@@ -1,0 +1,37 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 每天UTC 0点执行
+  workflow_dispatch:     # 允许手动触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write    # 授予推送权限
+
+    steps:
+      - name: 检出仓库（指定master分支）
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}  # 显式传递token
+
+      - name: 配置上游仓库
+        run: |
+          git remote remove upstream || true
+          git remote add upstream https://github.com/dnSpyEx/dnSpy.git
+          git fetch upstream
+
+      - name: 强制同步并推送
+        run: |
+          git checkout master
+          git reset --hard upstream/master
+          # 避免空提交（可选）
+          if git diff --quiet HEAD origin/master; then
+            echo "无变更，无需推送"
+          else
+            git push origin master --force
+          fi
